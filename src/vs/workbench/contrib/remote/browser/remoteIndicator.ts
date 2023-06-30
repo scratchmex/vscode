@@ -9,7 +9,7 @@ import { themeColorFromId } from 'vs/platform/theme/common/themeService';
 import { IRemoteAgentService, remoteConnectionLatencyMeasurer } from 'vs/workbench/services/remote/common/remoteAgentService';
 import { RunOnceScheduler, retry } from 'vs/base/common/async';
 import { Emitter, Event } from 'vs/base/common/event';
-import { Disposable, dispose } from 'vs/base/common/lifecycle';
+import { Disposable } from 'vs/base/common/lifecycle';
 import { MenuId, IMenuService, MenuItemAction, MenuRegistry, registerAction2, Action2, SubmenuItemAction } from 'vs/platform/actions/common/actions';
 import { IWorkbenchContribution } from 'vs/workbench/common/contributions';
 import { StatusbarAlignment, IStatusbarService, IStatusbarEntryAccessor, IStatusbarEntry } from 'vs/workbench/services/statusbar/browser/statusbar';
@@ -555,15 +555,8 @@ export class RemoteStatusIndicator extends Disposable implements IWorkbenchContr
 			}
 		}
 
-		// Show when there are commands or installable remote extensions.
-		if (this.hasRemoteMenuCommands(true) || this.remoteExtensionMetadata.some(ext => !ext.installed && ext.isPlatformCompatible)) {
-			this.renderRemoteStatusIndicator(`$(remote)`, nls.localize('noHost.tooltip', "Open a Remote Window"));
-			return;
-		}
-
-		// No Remote Extensions: hide status indicator
-		dispose(this.remoteStatusEntry);
-		this.remoteStatusEntry = undefined;
+		this.renderRemoteStatusIndicator(`$(remote)`, nls.localize('noHost.tooltip', "Open a Remote Window"));
+		return;
 	}
 
 	private renderRemoteStatusIndicator(initialText: string, initialTooltip?: string | MarkdownString, command?: string, showProgress?: boolean): void {
@@ -577,7 +570,7 @@ export class RemoteStatusIndicator extends Disposable implements IWorkbenchContr
 			text,
 			showProgress,
 			tooltip,
-			command: command ?? (this.hasRemoteMenuCommands(false) || this.remoteExtensionMetadata.some(ext => !ext.installed && ext.isPlatformCompatible)) ? RemoteStatusIndicator.REMOTE_ACTIONS_COMMAND_ID : undefined
+			command: command ?? RemoteStatusIndicator.REMOTE_ACTIONS_COMMAND_ID
 		};
 
 		if (this.remoteStatusEntry) {
@@ -848,16 +841,5 @@ export class RemoteStatusIndicator extends Disposable implements IWorkbenchContr
 		}));
 
 		quickPick.show();
-	}
-
-	private hasRemoteMenuCommands(ignoreInstallAdditional: boolean): boolean {
-		if (this.remoteAuthority !== undefined || this.virtualWorkspaceLocation !== undefined) {
-			if (RemoteStatusIndicator.SHOW_CLOSE_REMOTE_COMMAND_ID) {
-				return true;
-			}
-		} else if (!ignoreInstallAdditional && this.extensionGalleryService.isEnabled()) {
-			return true;
-		}
-		return this.getRemoteMenuActions().length > 0;
 	}
 }
