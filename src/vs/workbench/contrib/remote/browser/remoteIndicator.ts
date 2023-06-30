@@ -8,7 +8,7 @@ import { STATUS_BAR_HOST_NAME_BACKGROUND, STATUS_BAR_HOST_NAME_FOREGROUND } from
 import { themeColorFromId } from 'vs/platform/theme/common/themeService';
 import { IRemoteAgentService, remoteConnectionLatencyMeasurer } from 'vs/workbench/services/remote/common/remoteAgentService';
 import { RunOnceScheduler, retry } from 'vs/base/common/async';
-import { Event } from 'vs/base/common/event';
+import { Emitter, Event } from 'vs/base/common/event';
 import { Disposable, dispose } from 'vs/base/common/lifecycle';
 import { MenuId, IMenuService, MenuItemAction, MenuRegistry, registerAction2, Action2, SubmenuItemAction } from 'vs/platform/actions/common/actions';
 import { IWorkbenchContribution } from 'vs/workbench/common/contributions';
@@ -115,6 +115,9 @@ export class RemoteStatusIndicator extends Disposable implements IWorkbenchContr
 	private loggedInvalidGroupNames: { [group: string]: boolean } = Object.create(null);
 	private readonly remoteExtensionMetadata: RemoteExtensionMetadata[];
 	private remoteMetadataInitialized: boolean = false;
+	private readonly _onDidChangeEntries = this._register(new Emitter<void>());
+	private readonly onDidChangeEntries: Event<void> = this._onDidChangeEntries.event;
+
 	constructor(
 		@IStatusbarService private readonly statusbarService: IStatusbarService,
 		@IBrowserWorkbenchEnvironmentService private readonly environmentService: IBrowserWorkbenchEnvironmentService,
@@ -341,6 +344,7 @@ export class RemoteStatusIndicator extends Disposable implements IWorkbenchContr
 		}
 
 		this.remoteMetadataInitialized = true;
+		this._onDidChangeEntries.fire();
 		showRemoteStartEntry.bindTo(this.contextKeyService).set(true);
 		this.updateRemoteStatusIndicator();
 	}
@@ -833,6 +837,15 @@ export class RemoteStatusIndicator extends Disposable implements IWorkbenchContr
 
 		const itemUpdater = this.remoteIndicatorMenu.onDidChange(() => quickPick.items = computeItems());
 		quickPick.onDidHide(itemUpdater.dispose);
+
+		if (quickPick.items.length === 0) {
+			quickPick.busy = true;
+		}
+
+		this._register(this.onDidChangeEntries(() => {
+			quickPick.busy = false;
+			quickPick.items = computeItems();
+		}));
 
 		quickPick.show();
 	}
